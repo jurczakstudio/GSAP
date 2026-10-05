@@ -27,18 +27,33 @@ Windows w maszynie nie musi być aktywowany: klucz produktu można pominąć, a 
 
 ## Krok 3: sterownik GCC (w maszynie)
 
-Jaguar II działa tylko w trybie „GCC USB”, a do tego trybu GCC ma wyłącznie 32-bitowy sterownik
-jądra (`gccusd.sys`, sprawdzone w paczce 2.39-01). Dlatego na 64-bitowym Windows instalator kończy
-się komunikatem „USB device not detected!”, a w 32-bitowej maszynie powinien zadziałać.
+Jaguar II w trybie „GCC USB” przedstawia się jako urządzenie bez klasy (`USB\Class_00`).
+Instalatory GCC 2.17 i 2.39 wykrywają po USB tylko ploter w trybie „Common USB” (jako drukarkę USB),
+więc kończą się komunikatem „USB device not detected!”, także w 32-bitowym Windows.
+Sterownik „Obsługa drukowania USB” daje kod 10.
 
-1. Pobierz paczkę sterowników GCC 2.39-01 (obsługuje JaguarII-61/101/132):
-   https://support.jorlink.com/hubfs/Drivers-Firmware-Manuals/GCC%20Vinyl%20Cutters/GCC%20Vinyl%20All%20Cutter%20Driver%202.39-01.zip
-   i wrzuć `Cutter_Plotter_driver_USB_V2.39-01.exe` do `C:\Ploter\sterownik`.
-2. Upewnij się, że ploter jest przekazany do maszyny (menu okna maszyny *Urządzenia → USB* →
-   zaznaczony ploter). Na komputerze-gospodarzu zniknie on wtedy z Menedżera urządzeń.
-3. W maszynie uruchom `\\VBOXSVR\Ploter\sterownik\Cutter_Plotter_driver_USB_V2.39-01.exe`
-   jako administrator i wybierz swój model Jaguar II.
-4. Jeśli 32-bitowy Windows 10 odmówi załadowania sterownika, użyj 32-bitowego Windows 7.
+Obie paczki zawierają jednak oryginalny sterownik trybu „GCC USB”: `gccusd.sys` (32-bit, 2009,
+podpisany przez GCC), tylko bez pliku `.inf`. Folder `gccusd` uzupełnia brakujący plik:
+
+- `gccusd.inf` przypisuje `gccusd.sys` do `USB\VID_0F0B&PID_0002` (tylko 32-bitowy Windows),
+- `zainstaluj-sterownik.ps1` wyjmuje `gccusd.sys` z instalatora GCC 2.39-01 lub 2.17-01,
+  sprawdza jego SHA-256 i instaluje sterownik.
+
+Sterownik po zainstalowaniu udostępnia urządzenie `\\.\EZNUS0`. Każdy zapis do niego to transfer
+bulk USB do plotera, bez dodatkowej wymiany poleceń. `guest-plot.ps1` wysyła tam HPGL bezpośrednio.
+
+1. Pobierz paczkę sterowników GCC 2.39-01:
+   https://support.jorlink.com/hubfs/Drivers-Firmware-Manuals/GCC%20Vinyl%20Cutters/GCC%20Vinyl%20All%20Cutter%20Driver%202.39-01.zip,
+   rozpakuj ją i wrzuć `Cutter_Plotter_driver_USB_V2.39-01.exe` do `C:\Ploter\sterownik`.
+2. Skopiuj folder `plotter\vm\gccusd` oraz pliki `guest-plot.ps1` i `guest-plot.bat` do `C:\Ploter`
+   (robi to też `setup-vm.bat`).
+3. Upewnij się, że ploter jest przekazany do maszyny (menu okna maszyny *Urządzenia → USB* →
+   zaznaczony ploter).
+4. W maszynie otwórz **PowerShell jako administrator** i uruchom:
+   `powershell -ExecutionPolicy Bypass -File \\VBOXSVR\Ploter\gccusd\zainstaluj-sterownik.ps1`
+   Na ostrzeżenie o niezweryfikowanym wydawcy wybierz *Zainstaluj mimo to*. Jeśli skrypt poprosi
+   o ręczną podmianę sterownika w Menedżerze urządzeń, zrób to i uruchom go ponownie.
+5. Jeśli 32-bitowy Windows 10 nie uruchomi sterownika (kod 10, 39 lub 52), użyj 32-bitowego Windows 7.
 
 ## Krok 4: cięcie
 
@@ -58,5 +73,5 @@ Możesz też zainstalować GreatCut lub SignCut w maszynie i ciąć bezpośredni
 | VirtualBox nie startuje maszyny / błąd VT-x | Włącz wirtualizację (VT-x/AMD-V, SVM) w BIOS/UEFI |
 | Maszyna działa bardzo wolno | Wyłącz Hyper-V/„Platformę maszyny wirtualnej” w funkcjach Windows albo przydziel więcej RAM |
 | Ploter nie widoczny w maszynie | Menu *Urządzenia → USB*; sprawdź, czy kabel jest podłączony przed startem maszyny |
-| „Nie znalazłem drukarki GCC” | Uruchom `guest-plot.ps1 -ListPrinters` i podaj nazwę: `-Printer "nazwa"` |
+| „Nie znalazłem ani sterownika gccusd…” | Uruchom ponownie `gccusd\zainstaluj-sterownik.ps1` i sprawdź, czy ploter ma sterownik `gccusd` |
 | Brak `\\VBOXSVR\Ploter` | Zainstaluj dodatki gościa: menu *Urządzenia → Wstaw obraz płyty z dodatkami gościa* |

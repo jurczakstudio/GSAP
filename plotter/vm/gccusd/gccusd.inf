@@ -1,0 +1,48 @@
+; Plik instalacyjny dla oryginalnego sterownika GCC trybu "GCC USB" (gccusd.sys, 32-bit).
+; Paczki GCC 2.17/2.39 zawieraja gccusd.sys, ale nie zawieraja pliku .inf, ktory przypisuje go
+; do plotera Jaguar II (USB\VID_0F0B&PID_0002). Dziala tylko w 32-bitowym Windows.
+; gccusd.sys wyciaga z instalatora GCC skrypt zainstaluj-sterownik.ps1.
+
+[Version]
+Signature   = "$WINDOWS NT$"
+Class       = USBDevice
+ClassGuid   = {88BAE032-5A81-49f0-BC3D-A4FF138216D6}
+Provider    = %Provider%
+DriverVer   = 06/12/2009,1.11.1.1
+
+[Manufacturer]
+%Mfg% = GCC, NTx86
+
+[GCC.NTx86]
+%DeviceDesc% = GCCUSD_Install, USB\VID_0F0B&PID_0002
+
+[SourceDisksNames]
+1 = %DiskName%,,,
+
+[SourceDisksFiles]
+gccusd.sys = 1
+
+[DestinationDirs]
+DefaultDestDir = 12
+
+[GCCUSD_Install]
+CopyFiles = GCCUSD_Files
+
+[GCCUSD_Files]
+gccusd.sys
+
+[GCCUSD_Install.Services]
+AddService = gccusd, 0x00000002, GCCUSD_Service
+
+[GCCUSD_Service]
+DisplayName   = %DeviceDesc%
+ServiceType   = 1
+StartType     = 3
+ErrorControl  = 1
+ServiceBinary = %12%\gccusd.sys
+
+[Strings]
+Provider   = "GCC (inf: plotter/vm/gccusd)"
+Mfg        = "GCC"
+DeviceDesc = "GCC Jaguar II (GCC USB)"
+DiskName   = "GCC USB driver"

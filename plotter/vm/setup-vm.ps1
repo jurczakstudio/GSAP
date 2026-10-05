@@ -143,6 +143,7 @@ New-Item -ItemType Directory -Force -Path (Join-Path $SharedFolder "sterownik") 
 foreach ($f in @("guest-plot.ps1", "guest-plot.bat")) {
     Copy-Item -Force (Join-Path $PSScriptRoot $f) $SharedFolder
 }
+Copy-Item -Recurse -Force (Join-Path $PSScriptRoot "gccusd") $SharedFolder
 Write-Host "Wrzuć sterownik GCC do $SharedFolder\sterownik - w maszynie zobaczysz go jako \\VBOXSVR\Ploter\sterownik."
 
 # ---------------------------------------------------------------- 5. maszyna

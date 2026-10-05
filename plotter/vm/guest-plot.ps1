@@ -1,14 +1,17 @@
 ﻿<#
 .SYNOPSIS
     Uruchamiany WEWNĄTRZ maszyny wirtualnej z 32-bitowym Windows. Wysyła HPGL do plotera
-    GCC Jaguar II przez zainstalowany tam oryginalny sterownik GCC (drukarka Windows,
-    dane typu RAW, czyli bez przetwarzania przez sterownik).
+    GCC Jaguar II:
+      - prosto do sterownika trybu "GCC USB" (\\.\EZNUS0, instaluje go gccusd\zainstaluj-sterownik.ps1),
+      - albo przez drukarkę GCC w Windows (dane typu RAW), jeśli jest zainstalowana.
+    Domyślnie używa sterownika gccusd, gdy jest dostępny.
 
 .EXAMPLE
     guest-plot.ps1 -Test                      # kwadrat testowy 30x30 mm
     guest-plot.ps1 -File C:\projekt.plt       # wyślij plik
     guest-plot.ps1 -Watch                     # wysyłaj pliki zapisywane w \\VBOXSVR\Ploter
     guest-plot.ps1 -ListPrinters              # pokaż drukarki
+    guest-plot.ps1 -Test -Device \\.\EZNUS0    # wymuś wysyłanie prosto do sterownika gccusd
 #>
 param(
     [switch]$Test,
@@ -16,6 +19,7 @@ param(
     [switch]$Watch,
     [switch]$ListPrinters,
     [string]$Printer,
+    [string]$Device,
     [string]$Folder = "\\VBOXSVR\Ploter",
     [double]$SizeMm = 30
 )
@@ -27,6 +31,51 @@ $PlotExtensions = @(".plt", ".hpgl", ".hpg", ".hgl", ".prn")
 Add-Type -TypeDefinition @"
 using System;
 using System.Runtime.InteropServices;
+
+public static class RawDevice {
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    static extern IntPtr CreateFile(string name, uint access, uint share, IntPtr security,
+                                    uint creation, uint flags, IntPtr template);
+    [DllImport("kernel32.dll", SetLastError = true)]
+    static extern bool WriteFile(IntPtr handle, byte[] data, int count, out int written, IntPtr overlapped);
+    [DllImport("kernel32.dll", SetLastError = true)]
+    static extern bool CloseHandle(IntPtr handle);
+
+    const uint GENERIC_WRITE = 0x40000000;
+    const uint SHARE_READ_WRITE = 3;
+    const uint OPEN_EXISTING = 3;
+    static readonly IntPtr INVALID = new IntPtr(-1);
+
+    public static bool Exists(string path) {
+        IntPtr h = CreateFile(path, GENERIC_WRITE, SHARE_READ_WRITE, IntPtr.Zero, OPEN_EXISTING, 0, IntPtr.Zero);
+        if (h == INVALID) return false;
+        CloseHandle(h);
+        return true;
+    }
+
+    // Sterownik gccusd.sys zamienia WriteFile na transfer bulk USB do plotera.
+    public static void Send(string path, byte[] data) {
+        IntPtr h = CreateFile(path, GENERIC_WRITE, SHARE_READ_WRITE, IntPtr.Zero, OPEN_EXISTING, 0, IntPtr.Zero);
+        if (h == INVALID)
+            throw new Exception("Nie mogę otworzyć " + path + " (błąd " + Marshal.GetLastWin32Error() + ")");
+        try {
+            int offset = 0;
+            while (offset < data.Length) {
+                int count = Math.Min(4096, data.Length - offset);
+                byte[] chunk = new byte[count];
+                Array.Copy(data, offset, chunk, 0, count);
+                int written;
+                if (!WriteFile(h, chunk, count, out written, IntPtr.Zero))
+                    throw new Exception("WriteFile: błąd " + Marshal.GetLastWin32Error());
+                if (written <= 0)
+                    throw new Exception("Ploter nie przyjął danych");
+                offset += written;
+            }
+        } finally {
+            CloseHandle(h);
+        }
+    }
+}
 
 public static class RawPrinter {
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
@@ -82,13 +131,18 @@ function Get-PrinterNames {
 }
 
 function Resolve-Plotter {
+    if ($Device) { return $Device }
     if ($Printer) { return $Printer }
+    foreach ($i in 0..3) {
+        $path = "\\.\EZNUS$i"
+        if ([RawDevice]::Exists($path)) { return $path }
+    }
     $names = Get-PrinterNames
     $match = @($names | Where-Object { $_ -match "GCC|Jaguar" })
     if ($match.Count -ge 1) { return $match[0] }
     Write-Host "Nie znalazłem drukarki GCC. Zainstalowane drukarki:" -ForegroundColor Yellow
     $names | ForEach-Object { Write-Host "  $_" }
-    throw "Zainstaluj sterownik GCC albo podaj nazwę: -Printer `"nazwa drukarki`""
+    throw "Nie znalazłem ani sterownika gccusd (uruchom gccusd\zainstaluj-sterownik.ps1), ani drukarki GCC (-Printer `"nazwa`")"
 }
 
 function ConvertTo-Hpgl([string]$text) {
@@ -104,7 +158,11 @@ function ConvertTo-Hpgl([string]$text) {
 
 function Send-Hpgl([string]$printerName, [string]$name, [string]$hpgl) {
     $bytes = [System.Text.Encoding]::ASCII.GetBytes($hpgl)
-    [RawPrinter]::Send($printerName, $name, $bytes)
+    if ($printerName.StartsWith("\\.\")) {
+        [RawDevice]::Send($printerName, $bytes)
+    } else {
+        [RawPrinter]::Send($printerName, $name, $bytes)
+    }
     Write-Host ("  wysłano {0} B do '{1}'" -f $bytes.Length, $printerName)
 }
 
