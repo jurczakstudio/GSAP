@@ -1,5 +1,7 @@
 # GCC Jaguar II przez port COM, bez sterownika GCC USB
 
+> **Nie chcesz kupować przejściówki?** Użyj wariantu z maszyną wirtualną: [vm/README.md](vm/README.md).
+
 Sterownik GCC USB do Jaguara II nie działa na 64-bitowym Windows 10/11: ploter nie
 wykonuje poleceń wysyłanych po USB. Ten program omija sterownik i wysyła zwykły
 HPGL przez złącze **SERIAL**, które działa niezależnie od wersji Windows.
