@@ -27,11 +27,18 @@ Windows w maszynie nie musi być aktywowany: klucz produktu można pominąć, a 
 
 ## Krok 3: sterownik GCC (w maszynie)
 
-1. Pobierz sterownik USB dla Jaguar II ze strony GCC (sekcja Support/Download) i wrzuć go
-   na swoim komputerze do `C:\Ploter\sterownik`.
-2. W maszynie otwórz `\\VBOXSVR\Ploter\sterownik` i zainstaluj sterownik.
-3. Jeśli Windows w maszynie nie widzi plotera, w oknie maszyny wybierz menu *Urządzenia → USB*
-   i zaznacz ploter.
+Jaguar II działa tylko w trybie „GCC USB”, a do tego trybu GCC ma wyłącznie 32-bitowy sterownik
+jądra (`gccusd.sys`, sprawdzone w paczce 2.39-01). Dlatego na 64-bitowym Windows instalator kończy
+się komunikatem „USB device not detected!”, a w 32-bitowej maszynie powinien zadziałać.
+
+1. Pobierz paczkę sterowników GCC 2.39-01 (obsługuje JaguarII-61/101/132):
+   https://support.jorlink.com/hubfs/Drivers-Firmware-Manuals/GCC%20Vinyl%20Cutters/GCC%20Vinyl%20All%20Cutter%20Driver%202.39-01.zip
+   i wrzuć `Cutter_Plotter_driver_USB_V2.39-01.exe` do `C:\Ploter\sterownik`.
+2. Upewnij się, że ploter jest przekazany do maszyny (menu okna maszyny *Urządzenia → USB* →
+   zaznaczony ploter). Na komputerze-gospodarzu zniknie on wtedy z Menedżera urządzeń.
+3. W maszynie uruchom `\\VBOXSVR\Ploter\sterownik\Cutter_Plotter_driver_USB_V2.39-01.exe`
+   jako administrator i wybierz swój model Jaguar II.
+4. Jeśli 32-bitowy Windows 10 odmówi załadowania sterownika, użyj 32-bitowego Windows 7.
 
 ## Krok 4: cięcie
 
