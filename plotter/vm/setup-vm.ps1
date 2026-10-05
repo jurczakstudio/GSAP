@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Tworzy maszynę wirtualną VirtualBox z 32-bitowym Windows, do której przekazywany
     jest ploter GCC Jaguar II przez USB. W środku działa oryginalny sterownik GCC,

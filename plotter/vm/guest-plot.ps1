@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Uruchamiany WEWNĄTRZ maszyny wirtualnej z 32-bitowym Windows. Wysyła HPGL do plotera
     GCC Jaguar II przez zainstalowany tam oryginalny sterownik GCC (drukarka Windows,
